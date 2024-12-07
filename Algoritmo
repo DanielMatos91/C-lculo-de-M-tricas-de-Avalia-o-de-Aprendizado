@@ -1,0 +1,97 @@
+import tensorflow as tf
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.utils import to_categorical
+from sklearn.metrics import confusion_matrix
+import numpy as np
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.metrics import recall_score
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import f1_score
+from sklearn.metrics import confusion_matrix
+
+# Carregar o dataset MNIST
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+# Pré-processamento dos dados
+x_train = x_train.reshape(-1, 28, 28, 1).astype('float32') / 255
+x_test = x_test.reshape(-1, 28, 28, 1).astype('float32') / 255
+y_train = to_categorical(y_train, 10)
+y_test = to_categorical(y_test, 10)
+
+# Definir um modelo simples
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=(28, 28, 1)),
+    tf.keras.layers.Conv2D(64, kernel_size=(3, 3), activation='relu'),
+    tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
+    tf.keras.layers.Dropout(0.25),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dropout(0.5),
+    tf.keras.layers.Dense(10, activation='softmax')
+])
+
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+# Treinar o modelo
+model.fit(x_train, y_train, batch_size=128, epochs=10, verbose=1, validation_data=(x_test, y_test))
+
+# Fazer previsões no conjunto de teste
+y_pred = model.predict(x_test)
+y_pred_classes = np.argmax(y_pred, axis=1)
+y_true = np.argmax(y_test, axis=1)
+
+
+# Gerar a matriz de confusão
+conf_matrix = confusion_matrix(y_true, y_pred_classes)
+
+# Normalizar a matriz de confusão para variar de 0.0 a 1
+normalized_conf_matrix = conf_matrix / conf_matrix.max()
+
+# Plotar a matriz de confusão normalizada
+plt.figure(figsize=(10, 8))
+sns.heatmap(normalized_conf_matrix, annot=True, fmt='.2f', cmap='Blues', xticklabels=range(10), yticklabels=range(10))
+plt.xlabel('Predito')
+plt.ylabel('Verdadeiro')
+plt.title('Matriz de Confusão Normalizada - MNIST')
+plt.show()
+
+
+# Cálculo do valor de Recall (Sensibilidade)
+recall = recall_score(y_true, y_pred_classes, average='macro')
+print("Recall:", recall)
+
+# Cálculo do valor de Acurracia
+accuracy = accuracy_score(y_true, y_pred_classes)
+print("Acurácia:", accuracy)
+
+# Cálculo do valor de Precisão
+precision = precision_score(y_true, y_pred_classes, average='macro')
+print("Precisão:", precision)
+
+# Cálculo do valor de F-Score
+f1 = f1_score(y_true, y_pred_classes, average='macro')
+print("F-score:", f1)
+
+
+
+# Gerar a matriz de confusão
+conf_matrix = confusion_matrix(y_true, y_pred_classes)
+
+# Calcular a especificidade para cada classe
+specificities = []
+for i in range(conf_matrix.shape[0]):
+    tn = np.sum(conf_matrix) - (np.sum(conf_matrix[i, :]) + np.sum(conf_matrix[:, i]) - conf_matrix[i, i])
+    fp = np.sum(conf_matrix[:, i]) - conf_matrix[i, i]
+    fn = np.sum(conf_matrix[i, :]) - conf_matrix[i, i]
+    tp = conf_matrix[i, i]
+    specificity = tn / (tn + fp)
+    specificities.append(specificity)
+
+# Exibir a especificidade de cada classe
+for i, spec in enumerate(specificities):
+    print(f"Especificidade da classe {i}: {spec:.2f}")
+
